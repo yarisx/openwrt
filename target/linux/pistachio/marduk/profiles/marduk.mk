@@ -25,7 +25,7 @@
 
 define Profile/marduk
     NAME:=Basic platform profile for Marduk
-    PACKAGES:=kmod-i2c wpan-tools tcpdump uhttpd
+    PACKAGES:=kmod-i2c wpan-tools tcpdump uhttpd alsa-lib alsa-utils alsa-utils-tests
 endef
 
 define Profile/marduk/Description
