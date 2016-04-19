@@ -290,6 +290,45 @@ Now start tftp boot:
 
     $ pistachio # run ethboot
 
+####Boot from Flash
+
+Boot from Flash requires tftp server.
+
+For setting up a tftp server on your development machine, refer **TFTP Boot** section above.
+
+Once tftp server is set up, follow the instructions given below :
+
+1. Init flash device on given SPI bus and chip select
+
+        sf probe 1:0
+
+2. Obtain an IP address
+
+        dhcp
+
+3. Define flash/nand partitions
+
+        mtdpart default
+
+4. Erase partition
+
+        nand erase.part firmware0
+
+5. Set serverip as ip address of tftp server and initialize tftpboot
+
+        setenv serverip <development_PC_IP> && tftpboot 0xe000000
+
+6. Initialize write to nand device
+
+        nand write 0xe000000 firmware0 ${filesize};
+
+7. Save ubifs boot environment variables
+
+        setenv nandroot "ubi.mtd=firmware0 root=ubi0:rootfs rootfstype=ubifs"
+        setenv bootcmd 'run nandboot'
+        saveenv
+
+####Configure Network
 
 You should see the logs on the console as below:
 
@@ -317,7 +356,7 @@ $root@OpenWrt:/#
 
 You can check "ifconfig -a" to check list of interfaces. Ethernet, WiFi and 6loWPAN should be up.
 
-####Note:
+**Note:**
 
 1. 6loWPAN IP has been hardcoded to 2001:1418:0100::1/48. You can change that by editing /etc/config/network script and restarting it.
 
@@ -341,7 +380,6 @@ You can check "ifconfig -a" to check list of interfaces. Ethernet, WiFi and 6loW
 ### Known Issues:
 
 - Cleaned up kernel patches will be upstreamed soon.
-- Booting from flash is not included.
 - OPKG support is not implemented.
 
 
