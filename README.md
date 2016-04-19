@@ -45,7 +45,7 @@ Firstly, to obtain a copy of the (Ci40) Marduk platform supported OpenWrt source
 
  * Install Git:  ```` sudo apt-get install git ````
 
- * Clone the repository: ```` git clone https://github.com/FlowM2M/openwrt.git ````
+ * Clone the repository: ```` git clone https://github.com/IMGCreator/openwrt.git ````
 
 To simply make a build based on the IMG default config run the following commands:
 
@@ -250,7 +250,7 @@ and initramfs filesystem.
     $ sudo apt-get install tftpd
 
 Create /etc/xinetd.d/tftp with following contents:
-    
+
     service tftp
     {
      protocol        = udp
@@ -274,7 +274,7 @@ Now use Serial Console to connect device to host PC. Switch on device and press 
 To use tftp boot, set following environment variables.
 
     $ pistachio # setenv ethaddr <xx:xx:xx:xx:xx:xx> # Set mac address for Ethernet
-(To generate mac address use command 
+(To generate mac address use command
 
     "echo "e2:"`od /dev/random -N5 -t x1 -An | sed 's/ /:/g' | cut -c1 --complement`"
 
@@ -362,24 +362,28 @@ You can check "ifconfig -a" to check list of interfaces. Ethernet, WiFi and 6loW
 
         $root@OpenWrt:/# /etc/init.d/network restart
 
-2. You can set ssid and password for WiFi either at compile time from file target/linux/pistachio/base-files/etc/uci-defaults/config/wireless
+2. You can enable WiFi by default by following below steps :-
+    - set ssid and password for WiFi either at compile time from file target/linux/pistachio/base-files/etc/uci-defaults/config/wireless
 
 
-        config wifi-iface
-            option device       radio0
-            option network      sta
-            option mode         sta
-            option ssid         <XYZ>
-            option encryption   psk2
-            option key          <Password>
+            config wifi-iface
+                option device       radio0
+                option network      sta
+                option mode         sta
+                option ssid         <XYZ>
+                option encryption   psk2
+                option key          <Password>
 
-    OR after booting update /etc/config/wireless as above and restart the network by running following command from CLI.
+        OR after booting update /etc/config/wireless as above and restart the network by running following command from CLI.
 
-        $root@OpenWrt:/# /etc/init.d/network restart
+            $root@OpenWrt:/# /etc/init.d/network restart
+
+   - set default route for WiFi in target/linux/pistachio/base-files/etc/uci-defaults/config/network as
+
+            option 'defaultroute' '1'
 
 ### Known Issues:
 
 - Cleaned up kernel patches will be upstreamed soon.
 - OPKG support is not implemented.
-
 
