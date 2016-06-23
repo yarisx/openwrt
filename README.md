@@ -62,27 +62,25 @@ Load Marduk platform specific OpenWrt configuration for Pistachio.
 
 2. Check the "Target Profile" is set to Basic platform profile for Marduk
 
-        Target Profile (Basic platform profile for Marduk)  ---> 
+        Target Profile (Basic platform profile for Marduk)  --->
             (X) Basic platform profile for Marduk with TI cc2520
             ( ) Basic platform profile for Marduk with Cascoda ca8210
             ( ) Wifi testing profile for Marduk with TI cc2520
 
-Alternatively, you can also load Marduk platform with TI cc2520 specific OpenWrt configuration for IMG Pistachio by adding following into .config file:
+Alternatively, you can use default configuration for Marduk platform with TI cc2520 specific OpenWrt configuration for IMG Pistachio by copying following into .config file:
 
-    $ echo "CONFIG_TARGET_pistachio=y" > .config
-    $ echo "CONFIG_TARGET_pistachio_marduk_marduk_cc2520=y" >> .config
+    $ cat target/linux/pistachio/creator-platform-default.config > .config
 
 Similarly, you can do the same for Marduk platform with Cascoda ca8210 specific OpenWrt configuration:
 
-    $ echo "CONFIG_TARGET_pistachio=y" > .config
-    $ echo "CONFIG_TARGET_pistachio_marduk_marduk_ca8210=y" >> .config
+    $ cat target/linux/pistachio/creator-platform-cascoda-default.config > .config
 
 Now build OpenWrt in standard way:
 
     $ make V=s -j1
 
 Once the build is completed, you will find the resulting output i.e. images, dtbs and rootfs at "bin/pistachio", depending upon the selected profile.
-Where PROFILE can be marduk_cc2520, marduk_ca8210, marduk_cc2520_wifi and VERSION is whatever mentioned in CONFIG_VERSION_NUMBER. By default VERSION is left blank.
+Where PROFILE can be marduk_cc2520, marduk_ca8210, marduk_cc2520_wifi and VERSION is whatever mentioned in CONFIG_VERSION_NUMBER. By default VERSION is master-pistachio in the default config.
 
 - openwrt-$(VERSION)-pistachio-pistachio_$(PROFILE)-uImage
 - openwrt-$(VERSION)-pistachio-pistachio_$(PROFILE)-uImage-initramfs
@@ -372,6 +370,7 @@ OR
         pistachio # usb start && ext4load usb 0 0x0E000000 openwrt-1.0.0-pistachio-marduk-marduk_cc2520-ubifs.img
 
 _Please note that maximum permissible size of ubifs flash image is 16MB. If you need to flash bigger size images, then need to change the load address._
+
 6. Initialize write to nand device:
 
         pistachio # nand write 0xe000000 firmwareX ${filesize};
@@ -504,7 +503,37 @@ You can check "ifconfig -a" to check list of interfaces. Ethernet, WiFi and 6loW
 
         option 'defaultroute' '1'
 
+##Using opkg utility
+All the packages built for pistachio-marduk are hosted on [IMGCreator downloads server](https://downloads.imgcreator.io/pistachio/marduk), so it should be possible to 
+use opkg utility to install/upgrade/remove the OpenWrt packages.
+
+1. Check if you have /etc/opkg/distfeeds.conf pointing to [IMGCreator downloads server](https://downloads.imgcreator.io/pistachio/marduk), else for your local development you can edit this to point to your local webserver which has the required packages.
+
+            root@OpenWrt:/# sed -i "s|http://downloads.imgcreator.io/pistachio/marduk/|http://localserver:port/|" /etc/opkg/distfeeds.conf
+
+2. Update the list of available packages from this download server.
+
+        root@OpenWrt:/# opkg update
+
+3. Install the intended package as follows:
+
+        root@OpenWrt:/# opkg install fping
+        Installing fping (2.4b2_to-ipv6-1) to root...
+        Downloading http://downloads.imgcreator.io/pistachio/marduk/packages/img/fping_2.4b2_to-ipv6-1_pistachio.ipk.
+        Configuring fping.
+ 
+4. In case you have the package already on your board, then it will say so.
+
+        root@OpenWrt:/# opkg install wpa-supplicant
+        Package wpa-supplicant (2015-03-25-2) installed in root is up to date.
+
+5. Remove the intended package as follows:
+
+        root@OpenWrt:/# opkg remove fping
+        Removing package fping from root...
+
+6. For more information regarding other opkg options, please refer [OPKG manager](https://wiki.openwrt.org/doc/techref/opkg)
+
 ### Known Issues:
 
 - Cleaned up kernel patches will be upstreamed soon.
-- OPKG support is not implemented.
