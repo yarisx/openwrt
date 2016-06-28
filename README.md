@@ -17,12 +17,6 @@ For users, this means the freedom of full customisation, allowing the use of an 
 Creator is MIPS based platform series from Imagination and Marduk is the latest board under that series. Pistachio is the name of Imagination's SoC based on MIPS.
 This guide helps as a quick start but for full details please see the [OpenWrt project wiki](http://wiki.openwrt.org/doc/start).
 
-## Revision History
-
-| revision  | changes from previous revision |
-|---------- |------------------------------- |
-| 1.0.0     | Initial release                |
-
 ## Package Content
 
 The release distribution is structured as documented in the upstream project however
@@ -65,7 +59,6 @@ Load Marduk platform specific OpenWrt configuration for Pistachio.
         Target Profile (Basic platform profile for Marduk)  --->
             (X) Basic platform profile for Marduk with TI cc2520
             ( ) Basic platform profile for Marduk with Cascoda ca8210
-            ( ) Wifi testing profile for Marduk with TI cc2520
 
 Alternatively, you can use default configuration for Marduk platform with TI cc2520 specific OpenWrt configuration for IMG Pistachio by copying following into .config file:
 
@@ -474,7 +467,7 @@ On successful, it will restart the system and you should following logs on the c
     $root@OpenWrt:/#
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-##Configure Network
+##Configure Network using command line
 You can check "ifconfig -a" to check list of interfaces. Ethernet, WiFi and 6loWPAN should be up.
 
 **Note:**
@@ -503,13 +496,25 @@ You can check "ifconfig -a" to check list of interfaces. Ethernet, WiFi and 6loW
 
         option 'defaultroute' '1'
 
+### Configure Network using luci web interface
+Alternatively, you can also configure network interfaces using luci web interface. Please refer [LUCI Essenetials](https://wiki.openwrt.org/doc/howto/luci.essentials) for more details.
+
+Note that luci is not enabled by default, but you should be able to use opkg utility to install luci.
+
+
 ##Using opkg utility
 All the packages built for pistachio-marduk are hosted on [IMGCreator downloads server](https://downloads.imgcreator.io/pistachio/marduk), so it should be possible to 
 use opkg utility to install/upgrade/remove the OpenWrt packages.
 
 1. Check if you have /etc/opkg/distfeeds.conf pointing to [IMGCreator downloads server](https://downloads.imgcreator.io/pistachio/marduk), else for your local development you can edit this to point to your local webserver which has the required packages.
 
-            root@OpenWrt:/# sed -i "s|http://downloads.imgcreator.io/pistachio/marduk/|http://localserver:port/|" /etc/opkg/distfeeds.conf
+        root@OpenWrt:/# sed -i "s|https://downloads.imgcreator.io/pistachio/marduk/|http://localserver:port/|" /etc/opkg/distfeeds.conf
+
+2. If you are using locally built openwrt image and want to update packages from [IMGCreator downloads server](https://downloads.imgcreator.io/pistachio/marduk/) then you may need to remove the signature check.
+
+        root@OpenWrt:/# vi /etc/opkg.conf
+
+   Comment out the line `option check_signature 1`  to `#option check_signature 1`
 
 2. Update the list of available packages from this download server.
 
