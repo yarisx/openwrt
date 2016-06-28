@@ -36,7 +36,7 @@ Firstly, to obtain a copy of the (Ci40) Marduk platform supported OpenWrt source
 
  * Install Git:  ```` sudo apt-get install git ````
 
- * Clone the repository: ```` git clone https://github.com/IMGCreator/openwrt.git ````
+ * Clone the repository: ```` git clone https://github.com/CreatorDev/openwrt.git ````
 
 To simply make a build based on the IMG default config run the following commands:
 
@@ -68,12 +68,17 @@ Similarly, you can do the same for Marduk platform with Cascoda ca8210 specific 
 
     $ cat target/linux/pistachio/creator-platform-cascoda-default.config > .config
 
+You can add git revision number as DISTRIB_REVISION in the openwrt image by doing following:
+
+    $ getver.sh . > version
+
 Now build OpenWrt in standard way:
 
     $ make V=s -j1
 
 Once the build is completed, you will find the resulting output i.e. images, dtbs and rootfs at "bin/pistachio", depending upon the selected profile.
-Where PROFILE can be marduk_cc2520, marduk_ca8210, marduk_cc2520_wifi and VERSION is whatever mentioned in CONFIG_VERSION_NUMBER. By default VERSION is master-pistachio in the default config.
+Where PROFILE can be marduk_cc2520, marduk_ca8210, marduk_cc2520_wifi and VERSION is whatever mentioned in CONFIG_VERSION_NUMBER.
+By default VERSION is blank if you do not use the creator-platform-default.config for loading the configuration.
 
 - openwrt-$(VERSION)-pistachio-pistachio_$(PROFILE)-uImage
 - openwrt-$(VERSION)-pistachio-pistachio_$(PROFILE)-uImage-initramfs
@@ -129,13 +134,13 @@ Linux kernel patches are added at :-
 
     target/linux/pistachio/patches-<kernel_version>/
 
-* All kernel patches are created from the linux kernel hosted [here](https://github.com/IMGCreator/linux).
-* Kernel patches for specific kernel version used in OpenWrt are prepared from corresponding branches in [linux](https://github.com/IMGCreator/linux) repo. e.g.
+* All kernel patches are created from the linux kernel hosted [here](https://github.com/CreatorDev/linux).
+* Kernel patches for specific kernel version used in OpenWrt are prepared from corresponding branches in [linux](https://github.com/CreatorDev/linux) repo. e.g.
 
         target/linux/pistachio/patches-4.1/
 
-contains patches created from [openwrt-4.1.13](https://github.com/IMGCreator/linux/tree/openwrt-4.1.13) branch.
-* For adding the kernel patch in OpenWrt, create a PR in [linux](https://github.com/IMGCreator/linux) with the change, and also create a PR with the patch of the change in OpenWrt repository.
+contains patches created from [openwrt-4.1.13](https://github.com/CreatorDev/linux/tree/openwrt-4.1.13) branch.
+* For adding the kernel patch in OpenWrt, create a PR in [linux](https://github.com/CreatorDev/linux) with the change, and also create a PR with the patch of the change in OpenWrt repository.
 * Following command can be used for creating the kernel patch :-
 
         git format-patch <commit_id> --keep-subject --start-number <number>
@@ -503,14 +508,14 @@ Note that luci is not enabled by default, but you should be able to use opkg uti
 
 
 ##Using opkg utility
-All the packages built for pistachio-marduk are hosted on [IMGCreator downloads server](https://downloads.imgcreator.io/pistachio/marduk), so it should be possible to 
+All the packages built for pistachio-marduk are hosted on [CreatorDev downloads server](https://downloads.creatordev.io/pistachio/marduk), so it should be possible to 
 use opkg utility to install/upgrade/remove the OpenWrt packages.
 
-1. Check if you have /etc/opkg/distfeeds.conf pointing to [IMGCreator downloads server](https://downloads.imgcreator.io/pistachio/marduk), else for your local development you can edit this to point to your local webserver which has the required packages.
+1. Check if you have /etc/opkg/distfeeds.conf pointing to [CreatorDev downloads server](https://downloads.creatordev.io/pistachio/marduk), else for your local development you can edit this to point to your local webserver which has the required packages.
 
-        root@OpenWrt:/# sed -i "s|https://downloads.imgcreator.io/pistachio/marduk/|http://localserver:port/|" /etc/opkg/distfeeds.conf
+        root@OpenWrt:/# sed -i "s|https://downloads.creatordev.io/pistachio/marduk/|http://localserver:port/|" /etc/opkg/distfeeds.conf
 
-2. If you are using locally built openwrt image and want to update packages from [IMGCreator downloads server](https://downloads.imgcreator.io/pistachio/marduk/) then you may need to remove the signature check.
+2. If you are using locally built openwrt image and want to update packages from [CreatorDev downloads server](https://downloads.creatordev.io/pistachio/marduk/) then you may need to remove the signature check.
 
         root@OpenWrt:/# vi /etc/opkg.conf
 
@@ -524,7 +529,7 @@ use opkg utility to install/upgrade/remove the OpenWrt packages.
 
         root@OpenWrt:/# opkg install fping
         Installing fping (2.4b2_to-ipv6-1) to root...
-        Downloading http://downloads.imgcreator.io/pistachio/marduk/packages/img/fping_2.4b2_to-ipv6-1_pistachio.ipk.
+        Downloading http://downloads.creatordev.io/pistachio/marduk/packages/img/fping_2.4b2_to-ipv6-1_pistachio.ipk.
         Configuring fping.
  
 4. In case you have the package already on your board, then it will say so.
@@ -538,6 +543,28 @@ use opkg utility to install/upgrade/remove the OpenWrt packages.
         Removing package fping from root...
 
 6. For more information regarding other opkg options, please refer [OPKG manager](https://wiki.openwrt.org/doc/techref/opkg)
+
+##Check your openwrt version
+You can check your opewrt version and release information by following:
+
+        root@OpenWrt:/# cat /etc/openwrt_release
+        DISTRIB_ID='OpenWrt'
+        DISTRIB_RELEASE='0.9.1'
+        DISTRIB_REVISION='9403ba4'
+        DISTRIB_CODENAME='ci40'
+        DISTRIB_TARGET='pistachio/marduk'
+        DISTRIB_DESCRIPTION='OpenWrt Ci40 0.9.1'
+        DISTRIB_TAINTS='no-all'
+
+Also the device info as follows:
+
+        root@OpenWrt:/# cat /etc/device_info
+        DEVICE_MANUFACTURER='Imagination Technologies'
+        DEVICE_MANUFACTURER_URL='www.imgtec.com'
+        DEVICE_PRODUCT='Creator Ci40(Marduk)'
+        DEVICE_REVISION='Rev4 with CC2520'
+
+Depending upon the config chosen to build, `DEVICE_REVISION` will be `Rev4 with CC2520` or `Rev5 with CA8210`.
 
 ### Known Issues:
 
