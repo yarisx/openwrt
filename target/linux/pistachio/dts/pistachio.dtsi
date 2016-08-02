@@ -462,6 +462,7 @@
 
 			gpio-controller;
 			#gpio-cells = <2>;
+			gpio-ranges = <&pinctrl 0 0 16>;
 
 			interrupt-controller;
 			#interrupt-cells = <2>;
@@ -472,6 +473,7 @@
 
 			gpio-controller;
 			#gpio-cells = <2>;
+			gpio-ranges = <&pinctrl 0 16 16>;
 
 			interrupt-controller;
 			#interrupt-cells = <2>;
@@ -482,6 +484,7 @@
 
 			gpio-controller;
 			#gpio-cells = <2>;
+			gpio-ranges = <&pinctrl 0 32 16>;
 
 			interrupt-controller;
 			#interrupt-cells = <2>;
@@ -492,6 +495,7 @@
 
 			gpio-controller;
 			#gpio-cells = <2>;
+			gpio-ranges = <&pinctrl 0 48 16>;
 
 			interrupt-controller;
 			#interrupt-cells = <2>;
@@ -502,6 +506,7 @@
 
 			gpio-controller;
 			#gpio-cells = <2>;
+			gpio-ranges = <&pinctrl 0 64 16>;
 
 			interrupt-controller;
 			#interrupt-cells = <2>;
@@ -512,6 +517,7 @@
 
 			gpio-controller;
 			#gpio-cells = <2>;
+			gpio-ranges = <&pinctrl 0 80 10>;
 
 			interrupt-controller;
 			#interrupt-cells = <2>;
