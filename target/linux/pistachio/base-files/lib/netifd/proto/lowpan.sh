@@ -5,6 +5,7 @@
 [ -n "$INCLUDE_ONLY" ] || {
         . /lib/functions.sh
         . /lib/functions/network.sh
+        . /lib/functions/mac.sh
         . ../netifd-proto.sh
         init_proto "$@"
 }
@@ -18,9 +19,13 @@ proto_lowpan_setup() {
         local id=${ifname##*[[:alpha:]]}
         local interface="$cfg$id" # i.e wpan0
 
+        generate_mac $WPAN_OTP_REG0
+        local WPAN_EUI=$(echo $MAC | cut -d: -f1,2,3):ff:fe:$(echo $MAC | cut -d: -f4,5,6)
+
         proto_init_update "$ifname" 1
 
         ifconfig "$interface" down
+        ip link set $interface address $WPAN_EUI
         iwpan dev "$interface" set pan_id "$pan_id"
         iwpan phy phy$id set channel 0 $channel
         ifconfig "$interface" up
@@ -58,4 +63,3 @@ proto_lowpan_init_config() {
 [ -n "$INCLUDE_ONLY" ] || {
         add_protocol lowpan
 }
-
