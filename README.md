@@ -18,9 +18,10 @@ Creator is a MIPS based developer program from Imagination Technologies. Creator
 This guide helps as a quick start but for full details about OpenWrt please see the [OpenWrt project wiki](http://wiki.openwrt.org/doc/start).
 
 
-## Using this documentation
 
-This readme contains the basics of building and modifying OpenWrt for Ci40. **You will find much more documentation on the [Creator Documentation website](https://docs.creatordev.io/ci40/guides/developer-guide/).**
+## This readme contains the basics of building and modifying OpenWrt for Ci40. **You will find much more documentation on the [Creator Documentation website](https://docs.creatordev.io/ci40/guides/platform/).**
+
+
 
 ## Package Content
 
@@ -46,7 +47,11 @@ Firstly, to obtain a copy of the (Ci40) Marduk platform supported OpenWrt source
 
  * Clone the repository: ```` git clone https://github.com/CreatorDev/openwrt.git ````
 
-To simply make a build based on the IMG default config run the following commands:
+Install build dependencies:
+
+    $ sudo apt-get install libncurses5-dev libncursesw5-dev zlib1g-dev libssl-dev gawk subversion
+
+To make a build based on the default Ci40 config, run the following commands:
 
     $ cd openwrt
     $ ./scripts/feeds update -a
@@ -54,38 +59,43 @@ To simply make a build based on the IMG default config run the following command
 
 _Ignore any "WARNING: No feed for package..." from the install feeds step._
 
-Load Marduk platform specific OpenWrt configuration for Pistachio.
-
-    $ make menuconfig
-
-1. Select the "Target System" as IMG MIPS Pistachio
-
-        Target System (Atheros AR7xxx/AR9xxx) --->(X) IMG MIPS Pistachio
-
-2. Check the "Target Profile" is set to Basic platform profile for Marduk with Cascoda ca8210
-
-        Target Profile (Basic platform profile for Marduk)  --->
-            (X) Basic platform profile for Marduk with Cascoda ca8210
-
-As an alternative to menuconfig, you can use the default configuration by running the following command:
+Set the default configuration for Ci40 by running the following command (this sets version numbers and OPKG URLs):
 
     $ cat target/linux/pistachio/creator-platform-cascoda-default.config > .config
 
-You can add a git revision number as DISTRIB_REVISION in the openwrt image by doing the following:
+Complete the configuration process by running menuconfig:
+
+    $ make menuconfig
+
+1. Check that "Target System" is IMG MIPS Pistachio
+
+        Target System (IMG MIPS Pistachio)  --->
+
+2. Check the "Target Profile" is set to Basic platform profile for Marduk with Cascoda ca8210
+
+        Target Profile (Basic platform profile for Marduk with Cascoda ca8210)  --->
+
+3. Save and Exit menuconfig
+
+Optionally, you can add a git revision number as DISTRIB_REVISION in the openwrt image by doing the following:
 
     $ getver.sh . > version
 
-Now build OpenWrt in the standard way:
+Now build OpenWrt with one of the following commands (see the gnu make documentation for more options):
 
-    $ make V=s -j1
+    $ make
+
+or
+
+    $ make V=s                       // Verbose mode
 
 Once the build is completed, you will find the resulting output i.e. images, dtbs and rootfs at "bin/pistachio".
 
-Example output for V0.9.2:
+Example output for V0.9.4:
 
-- openwrt-0.9.2-pistachio-pistachio_marduk_ca8210-uImage
-- openwrt-0.9.2-pistachio-pistachio_marduk_ca8210-uImage-initramfs
-- openwrt-0.9.2-pistachio-marduk-marduk_ca8210-rootfs.tar.gz
+- openwrt-0.9.4-pistachio-pistachio_marduk_ca8210-uImage
+- openwrt-0.9.4-pistachio-pistachio_marduk_ca8210-uImage-initramfs
+- openwrt-0.9.4-pistachio-marduk-marduk_ca8210-rootfs.tar.gz
 - pistachio_marduk_ca8210.dtb
 
 By default the version number is blank if you do not use the creator-platform-cascoda-default.config for loading the configuration.
