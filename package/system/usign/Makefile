@@ -16,11 +16,13 @@ PKG_USE_MIPS16:=0
 PKG_LICENSE:=ISC
 PKG_LICENSE_FILES:=
 
-PKG_MAINTAINER:=Felix Fietkau <nbd@openwrt.org>
+PKG_MAINTAINER:=Felix Fietkau <nbd@nbd.name>
 
 include $(INCLUDE_DIR)/package.mk
 include $(INCLUDE_DIR)/host-build.mk
 include $(INCLUDE_DIR)/cmake.mk
+
+HOST_BUILD_PREFIX:=$(STAGING_DIR_HOST)
 
 define Package/usign
   SECTION:=base
