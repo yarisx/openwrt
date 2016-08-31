@@ -14,7 +14,7 @@ PKG_RELEASE:=2
 
 PKG_USE_MIPS16:=0
 PKG_BUILD_PARALLEL:=1
-PKG_MAINTAINER:=Felix Fietkau <nbd@openwrt.org>
+PKG_MAINTAINER:=Felix Fietkau <nbd@nbd.name>
 
 # Perf's makefile and headers are not relocatable and must be built from the
 # Linux sources directory
@@ -25,7 +25,7 @@ include $(INCLUDE_DIR)/package.mk
 define Package/perf
   SECTION:=devel
   CATEGORY:=Development
-  DEPENDS:= @!USE_UCLIBC +libelf1 +libdw +libpthread +librt +objdump
+  DEPENDS:= +libelf1 +libdw +libpthread +librt +objdump @!LINUX_3_18
   TITLE:=Linux performance monitoring tool
   VERSION:=$(LINUX_VERSION)-$(PKG_RELEASE)
   URL:=http://www.kernel.org
@@ -59,7 +59,7 @@ MAKE_FLAGS = \
 	prefix=/usr
 
 ifdef CONFIG_USE_MUSL
- MAKE_FLAGS += EXTRA_CFLAGS="-include $(CURDIR)/musl-compat.h -D__UCLIBC__"
+ MAKE_FLAGS += EXTRA_CFLAGS="-I$(CURDIR)/musl-include -include $(CURDIR)/musl-compat.h -D__UCLIBC__"
 endif
 
 define Build/Compile
