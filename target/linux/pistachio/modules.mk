@@ -197,11 +197,12 @@ define KernelPackage/uccp420wlan
   KCONFIG:=\
     CONFIG_UCCP420WLAN \
     CONFIG_CFG80211=y \
+    CONFIG_CFG80211_CRDA_SUPPORT=y \
     CONFIG_CFG80211_DEVELOPER_WARNINGS=n \
     CONFIG_CFG80211_REG_DEBUG=n \
     CONFIG_CFG80211_DEFAULT_PS=y \
     CONFIG_CFG80211_DEBUGFS=y \
-    CONFIG_CFG80211_INTERNAL_REGDB=n \
+    CONFIG_CFG80211_INTERNAL_REGDB=y \
     CONFIG_CFG80211_WEXT=y \
     CONFIG_NL80211_TESTMODE=y \
     CONFIG_MAC80211=y \
@@ -227,7 +228,6 @@ define KernelPackage/uccp420wlan
     CONFIG_MWIFIEX=n \
     CONFIG_RSI_91X=n
   FILES:=$(LINUX_DIR)/drivers/net/wireless/uccp420wlan/uccp420wlan.ko
-  AUTOLOAD:=$(call AutoLoad,32,uccp420wlan)
 endef
 
 define KernelPackage/uccp420wlan/description
