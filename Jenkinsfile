@@ -86,7 +86,6 @@ node('docker && imgtec') {  // Only run on internal slaves as build takes a lot 
             }
 
             // Build all (for opkg)
-            // TODO grab vault creds and mod config to use OPKGSMIME
             if (params.ALL_PACKAGES){
                 echo 'Enabling all user and kernel packages'
                 sh 'echo \'' \
@@ -146,17 +145,27 @@ node('docker && imgtec') {  // Only run on internal slaves as build takes a lot 
             sh 'make defconfig'
         }
         stage('Build') {
-            // Attempt to build quickly and reliably
-            try {
-                sh "make -j4 V=s ${params.ALL_PACKAGES ? 'IGNORE_ERRORS=m' : ''}"
-            } catch (hudson.AbortException err) {
-                // TODO BUG JENKINS-28822
-                if(err.getMessage().contains('script returned exit code 143')) {
-                    throw err
+            // Add opkg signing key
+            withCredentials([
+                [$class: 'FileBinding', credentialsId: 'opkg-build-private-key', variable: 'PRIVATE_KEY'],
+                [$class: 'FileBinding', credentialsId: 'opkg-build-public-key', variable: 'PUBLIC_KEY'],
+            ]){
+                // Attempt to build quickly and reliably
+                try {
+                    sh "cp ${env.PRIVATE_KEY} ${WORKSPACE}/key-build"
+                    sh "cp ${env.PUBLIC_KEY} ${WORKSPACE}/key-build.pub"
+                    sh "make -j4 V=s ${params.ALL_PACKAGES ? 'IGNORE_ERRORS=m' : ''}"
+                } catch (hudson.AbortException err) {
+                    // TODO BUG JENKINS-28822
+                    if(err.getMessage().contains('script returned exit code 143')) {
+                        throw err
+                    }
+                    echo 'Parallel build failed, attempting to continue in  single threaded mode'
+                    sh "make -j1 V=s ${params.ALL_PACKAGES ? 'IGNORE_ERRORS=m' : ''}"
+                } finally {
+                    sh "rm ${WORKSPACE}/key-build*"
                 }
-                echo 'Parallel build failed, attempting to continue in  single threaded mode'
             }
-            sh "make -j1 V=s ${params.ALL_PACKAGES ? 'IGNORE_ERRORS=m' : ''}"
         }
 
         stage('Upload') {
