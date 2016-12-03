@@ -4,8 +4,8 @@
 
 [ -n "$INCLUDE_ONLY" ] || {
         . /lib/functions.sh
+        . /lib/functions/system.sh
         . /lib/functions/network.sh
-        . /lib/functions/mac.sh
         . ../netifd-proto.sh
         init_proto "$@"
 }
@@ -19,13 +19,25 @@ proto_lowpan_setup() {
         local id=${ifname##*[[:alpha:]]}
         local interface="$cfg$id" # i.e wpan0
 
-        generate_mac $WPAN_OTP_REG0
-        local WPAN_EUI=$(echo $MAC | cut -d: -f1,2,3):ff:fe:$(echo $MAC | cut -d: -f4,5,6)
-
+        ifconfig "$interface" down
         proto_init_update "$ifname" 1
 
-        ifconfig "$interface" down
-        ip link set $interface address $WPAN_EUI
+        # Wifi mac address must be part of DTB to compute 6Lowpan MAC
+        if [ ! -e /proc/device-tree/uccp@18480000/mac-address0 ]; then
+                logger "lowpan: Could not find wifi STA MAC address"
+        else
+                local WIFI_STA_MAC=0x$(hexdump -n 6 -v -e '/1 "%02X"' /proc/device-tree/uccp@18480000/mac-address0)
+
+                # 6LOWPAN_MAC = WIFI_STA_MAC + 5
+                local LOWPAN_OTP_OFFSET=0x5
+                local LOWPAN_MAC=$(printf "%012X" $((WIFI_STA_MAC + LOWPAN_OTP_OFFSET)))
+                LOWPAN_MAC=$(macaddr_setbit_la $(macaddr_canonicalize $LOWPAN_MAC))
+
+                # Compute EUI from MAC
+                local WPAN_EUI=$(echo $LOWPAN_MAC | cut -d: -f1,2,3):ff:fe:$(echo $LOWPAN_MAC | cut -d: -f4,5,6)
+                ip link set $interface address $WPAN_EUI
+        fi
+
         iwpan dev "$interface" set pan_id "$pan_id"
         iwpan phy phy$id set channel 0 $channel
         ifconfig "$interface" up
