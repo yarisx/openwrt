@@ -19,7 +19,7 @@ def customFeeds = [
 def feedParams = []
 for (feed in customFeeds) {
     feedParams.add(string(defaultValue: '', description: 'Branch/commmit/PR to override feed. \
-        (Can be a PR using PR-< id >)', name: "OVERRIDE_${feed[1].toUpperCase()}"))
+        (Can be a PR using PR-< id >)', name: "OVERRIDE_${feed[0].toUpperCase()}"))
 }
 
 properties([
@@ -120,13 +120,20 @@ node('docker && imgtec') {  // Only run on internal slaves as build takes a lot 
              + 'CONFIG_PACKAGE_kmod-usb-net-smsc95xx=y\n' \
              + '\' >> .config'
 
-            // If specified override each feed with local clone
+            // Add all required feeds to default config
             for (feed in customFeeds) {
-                if (params."OVERRIDE_${feed[1].toUpperCase()}"?.trim()){
-                    dir("feed-${feed[1]}") {
+                sh "grep -q 'src-.* ${feed[0]} .*' feeds.conf.default || \
+                    echo 'src-git ${feed[0]} ${feed[2]}/${feed[1]}.git' >> feeds.conf.default"
+            }
+
+            // If specified override each feed with local clone
+            sh 'cp feeds.conf.default feeds.conf'
+            for (feed in customFeeds) {
+                if (params."OVERRIDE_${feed[0].toUpperCase()}"?.trim()){
+                    dir("feed-${feed[0]}") {
                         checkout([
                             $class: 'GitSCM',
-                            branches: [[name: env."OVERRIDE_${feed[1].toUpperCase()}"]],
+                            branches: [[name: env."OVERRIDE_${feed[0].toUpperCase()}"]],
                             userRemoteConfigs: [[
                                 refspec: '+refs/pull/*/head:refs/remotes/origin/PR-* \
                                     +refs/heads/*:refs/remotes/origin/*',
@@ -134,14 +141,12 @@ node('docker && imgtec') {  // Only run on internal slaves as build takes a lot 
                             ]]
                         ])
                     }
-                    // Replace (or add if not exists) feed with local clone
-                    sh "grep -q 'src-.* ${feed[0]} .*' feeds.conf.default && \
-                        sed -i 's|^.*\\s\\(${feed[0]}\\)\\s.*\$|src-link \\1 ../feed-${feed[1]}|g' feeds.conf.default || \
-                        echo 'src-link ${feed[0]} ../feed-${feed[1]}' >> feeds.conf.default"
+                    sh "sed -i 's|^src-git ${feed[0]} .*|src-link ${feed[0]} ../feed-${feed[1]}|g' feeds.conf"
                 }
             }
-            sh 'cat .config feeds.conf.default'
+            sh 'cat feeds.conf.default feeds.conf .config'
             sh 'scripts/feeds update -a && scripts/feeds install -a'
+            sh 'rm feeds.conf'
             sh 'make defconfig'
         }
         stage('Build') {
