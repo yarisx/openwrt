@@ -34,6 +34,15 @@ properties([
             description: 'Config file to use', name: "CONFIG_FILE"),
         stringParam(defaultValue: '', description: 'Set version, if blank job number will be used.',
             name: 'VERSION'),
+        stringParam(defaultValue: '/var/www/html', description: 'Path to the webserver used for the OTA upgrade',
+            name: 'WEBSERVER_PATH'),
+        stringParam(defaultValue: '10.40.9.4', description: 'IP of the webserver used for the OTA upgrade',
+            name: 'WEBSERVER_IP'),
+        stringParam(defaultValue: '10.40.9.2', description: 'IP of the WAN board',
+            name: 'WAN_IP'),
+        stringParam(defaultValue: '/home/jenkins/boardfarm/boardfarm',
+            description: 'Path to the a local copy of Boardfarm repository',
+            name: 'BOARDFARM_DIRECTORY'),
     ] + feedParams)
 ])
 
@@ -182,8 +191,43 @@ node('docker && imgtec') {  // Only run on internal slaves as build takes a lot 
         }
     }
 }
-//node('boardfarm') {
-    stage('Intergration test') {
-        //TODO run the boardfarm test
+node('boardfarm') {
+    stage('Integration test') {
+        deleteDir()
+
+        unarchive mapping: ['bin/pistachio/*.ubi': '.']
+        sh 'cp bin/pistachio/*.ubi ${WEBSERVER_PATH}/image.ubi'
+
+        sh 'sshpass -p "root" scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+        ${BOARDFARM_DIRECTORY}/ota_update.sh ${BOARDFARM_DIRECTORY}/ota_verify.sh root@${WAN_IP}:~/'
+        sh 'sshpass -p "root" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+        root@${WAN_IP} "/root/ota_update.sh http://${WEBSERVER_IP}/image.ubi 192.168.0.2"'
+        sh 'sleep 180'
+
+        sh 'echo "ifconfig eth0 up" > /dev/ttyUSB0'
+        sh 'echo "ifconfig eth1 up" > /dev/ttyUSB0'
+        sh 'sleep 10'
+        sh 'echo "ifconfig eth0 192.168.1.1" > /dev/ttyUSB0'
+        sh 'echo "ifconfig eth1 192.168.0.2" > /dev/ttyUSB0'
+
+        sh 'echo "iptables -A forwarding_rule -i eth0 -j ACCEPT" > /dev/ttyUSB0'
+        sh 'echo "iptables -A forwarding_rule -i eth1 -j ACCEPT" > /dev/ttyUSB0'
+        sh 'echo "iptables -A forwarding_rule -o eth0 -j ACCEPT" > /dev/ttyUSB0'
+        sh 'echo "iptables -A forwarding_rule -o eth1 -j ACCEPT" > /dev/ttyUSB0'
+
+        sh 'echo "route add default gw 192.168.0.1" > /dev/ttyUSB0'
+        sh 'sleep 10'
+        sh 'echo "sed -i \'$ a nameserver 8.8.4.4\' /etc/resolv.conf" > /dev/ttyUSB0'
+        sh 'sleep 10'
+
+        sh 'sshpass -p "root" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+        root@${WAN_IP} "/root/ota_verify.sh 192.168.0.2 && rm /root/ota_*"'
+
+        sh 'mkdir -p "${WORKSPACE}/results"'
+        sh 'export USER="jenkins"; \
+        ${BOARDFARM_DIRECTORY}/bft -x ci40_passed_tests -n ci40_dut \
+        -o ${WORKSPACE}/results -c ${BOARDFARM_DIRECTORY}/boardfarm_config.json -y'
+
+        junit "results/test_results.xml"
     }
-//}
+}
