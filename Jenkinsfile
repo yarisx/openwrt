@@ -196,12 +196,12 @@ node('boardfarm') {
         deleteDir()
 
         unarchive mapping: ['bin/pistachio/*.ubi': '.']
-        sh 'cp bin/pistachio/*.ubi ${WEBSERVER_PATH}/image.ubi'
+        sh "cp bin/pistachio/*.ubi ${params.WEBSERVER_PATH}/image.ubi"
 
-        sh 'sshpass -p "root" scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-        ${BOARDFARM_DIRECTORY}/ota_update.sh ${BOARDFARM_DIRECTORY}/ota_verify.sh root@${WAN_IP}:~/'
-        sh 'sshpass -p "root" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-        root@${WAN_IP} "/root/ota_update.sh http://${WEBSERVER_IP}/image.ubi 192.168.0.2"'
+        sh "sshpass -p 'root' scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+        ${params.BOARDFARM_DIRECTORY}/ota_update.sh ${params.BOARDFARM_DIRECTORY}/ota_verify.sh root@${params.WAN_IP}:~/"
+        sh "sshpass -p 'root' ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+        root@${params.WAN_IP} '/root/ota_update.sh http://${params.WEBSERVER_IP}/image.ubi 192.168.0.2'"
         sh 'sleep 180'
 
         sh 'echo "ifconfig eth0 up" > /dev/ttyUSB0'
@@ -220,14 +220,14 @@ node('boardfarm') {
         sh 'echo "sed -i \'$ a nameserver 8.8.4.4\' /etc/resolv.conf" > /dev/ttyUSB0'
         sh 'sleep 10'
 
-        sh 'sshpass -p "root" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-        root@${WAN_IP} "/root/ota_verify.sh 192.168.0.2 && rm /root/ota_*"'
+        sh "sshpass -p 'root' ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+        root@${params.WAN_IP} \"/root/ota_verify.sh 192.168.0.2 && rm /root/ota_*\""
 
-        sh 'mkdir -p "${WORKSPACE}/results"'
-        sh 'export USER="jenkins"; \
-        ${BOARDFARM_DIRECTORY}/bft -x ci40_passed_tests -n ci40_dut \
-        -o ${WORKSPACE}/results -c ${BOARDFARM_DIRECTORY}/boardfarm_config.json -y'
+        sh "mkdir -p '${WORKSPACE}/results'"
+        sh "export USER='jenkins'; \
+        ${params.BOARDFARM_DIRECTORY}/bft -x ci40_passed_tests -n ci40_dut \
+        -o ${WORKSPACE}/results -c ${params.BOARDFARM_DIRECTORY}/boardfarm_config.json -y"
 
-        junit "results/test_results.xml"
+        junit 'results/test_results.xml'
     }
 }
