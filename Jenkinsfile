@@ -19,7 +19,7 @@ def customFeeds = [
 def feedParams = []
 for (feed in customFeeds) {
     feedParams.add(string(defaultValue: '', description: 'Branch/commmit/PR to override feed. \
-        (Can be a PR using PR-< id >)', name: "OVERRIDE_${feed[1].toUpperCase()}"))
+        (Can be a PR using PR-< id >)', name: "OVERRIDE_${feed[0].toUpperCase()}"))
 }
 
 properties([
@@ -34,6 +34,15 @@ properties([
             description: 'Config file to use', name: "CONFIG_FILE"),
         stringParam(defaultValue: '', description: 'Set version, if blank job number will be used.',
             name: 'VERSION'),
+        stringParam(defaultValue: '/var/www/html', description: 'Path to the webserver used for the OTA upgrade',
+            name: 'WEBSERVER_PATH'),
+        stringParam(defaultValue: '10.40.9.4', description: 'IP of the webserver used for the OTA upgrade',
+            name: 'WEBSERVER_IP'),
+        stringParam(defaultValue: '10.40.9.2', description: 'IP of the WAN board',
+            name: 'WAN_IP'),
+        stringParam(defaultValue: '/home/jenkins/boardfarm/boardfarm',
+            description: 'Path to the a local copy of Boardfarm repository',
+            name: 'BOARDFARM_DIRECTORY'),
     ] + feedParams)
 ])
 
@@ -120,13 +129,20 @@ node('docker && imgtec') {  // Only run on internal slaves as build takes a lot 
              + 'CONFIG_PACKAGE_kmod-usb-net-smsc95xx=y\n' \
              + '\' >> .config'
 
-            // If specified override each feed with local clone
+            // Add all required feeds to default config
             for (feed in customFeeds) {
-                if (params."OVERRIDE_${feed[1].toUpperCase()}"?.trim()){
-                    dir("feed-${feed[1]}") {
+                sh "grep -q 'src-.* ${feed[0]} .*' feeds.conf.default || \
+                    echo 'src-git ${feed[0]} ${feed[2]}/${feed[1]}.git' >> feeds.conf.default"
+            }
+
+            // If specified override each feed with local clone
+            sh 'cp feeds.conf.default feeds.conf'
+            for (feed in customFeeds) {
+                if (params."OVERRIDE_${feed[0].toUpperCase()}"?.trim()){
+                    dir("feed-${feed[0]}") {
                         checkout([
                             $class: 'GitSCM',
-                            branches: [[name: env."OVERRIDE_${feed[1].toUpperCase()}"]],
+                            branches: [[name: env."OVERRIDE_${feed[0].toUpperCase()}"]],
                             userRemoteConfigs: [[
                                 refspec: '+refs/pull/*/head:refs/remotes/origin/PR-* \
                                     +refs/heads/*:refs/remotes/origin/*',
@@ -134,14 +150,12 @@ node('docker && imgtec') {  // Only run on internal slaves as build takes a lot 
                             ]]
                         ])
                     }
-                    // Replace (or add if not exists) feed with local clone
-                    sh "grep -q 'src-.* ${feed[0]} .*' feeds.conf.default && \
-                        sed -i 's|^.*\\s\\(${feed[0]}\\)\\s.*\$|src-link \\1 ../feed-${feed[1]}|g' feeds.conf.default || \
-                        echo 'src-link ${feed[0]} ../feed-${feed[1]}' >> feeds.conf.default"
+                    sh "sed -i 's|^src-git ${feed[0]} .*|src-link ${feed[0]} ../feed-${feed[1]}|g' feeds.conf"
                 }
             }
-            sh 'cat .config feeds.conf.default'
+            sh 'cat feeds.conf.default feeds.conf .config'
             sh 'scripts/feeds update -a && scripts/feeds install -a'
+            sh 'rm feeds.conf'
             sh 'make defconfig'
         }
         stage('Build') {
@@ -177,8 +191,43 @@ node('docker && imgtec') {  // Only run on internal slaves as build takes a lot 
         }
     }
 }
-//node('boardfarm') {
-    stage('Intergration test') {
-        //TODO run the boardfarm test
+node('boardfarm') {
+    stage('Integration test') {
+        deleteDir()
+
+        unarchive mapping: ['bin/pistachio/*.ubi': '.']
+        sh "cp bin/pistachio/*.ubi ${params.WEBSERVER_PATH}/image.ubi"
+
+        sh "sshpass -p 'root' scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+        ${params.BOARDFARM_DIRECTORY}/ota_update.sh ${params.BOARDFARM_DIRECTORY}/ota_verify.sh root@${params.WAN_IP}:~/"
+        sh "sshpass -p 'root' ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+        root@${params.WAN_IP} '/root/ota_update.sh http://${params.WEBSERVER_IP}/image.ubi 192.168.0.2'"
+        sh 'sleep 180'
+
+        sh 'echo "ifconfig eth0 up" > /dev/ttyUSB0'
+        sh 'echo "ifconfig eth1 up" > /dev/ttyUSB0'
+        sh 'sleep 10'
+        sh 'echo "ifconfig eth0 192.168.1.1" > /dev/ttyUSB0'
+        sh 'echo "ifconfig eth1 192.168.0.2" > /dev/ttyUSB0'
+
+        sh 'echo "iptables -A forwarding_rule -i eth0 -j ACCEPT" > /dev/ttyUSB0'
+        sh 'echo "iptables -A forwarding_rule -i eth1 -j ACCEPT" > /dev/ttyUSB0'
+        sh 'echo "iptables -A forwarding_rule -o eth0 -j ACCEPT" > /dev/ttyUSB0'
+        sh 'echo "iptables -A forwarding_rule -o eth1 -j ACCEPT" > /dev/ttyUSB0'
+
+        sh 'echo "route add default gw 192.168.0.1" > /dev/ttyUSB0'
+        sh 'sleep 10'
+        sh 'echo "sed -i \'$ a nameserver 8.8.4.4\' /etc/resolv.conf" > /dev/ttyUSB0'
+        sh 'sleep 10'
+
+        sh "sshpass -p 'root' ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+        root@${params.WAN_IP} \"/root/ota_verify.sh 192.168.0.2 && rm /root/ota_*\""
+
+        sh "mkdir -p '${WORKSPACE}/results'"
+        sh "export USER='jenkins'; \
+        ${params.BOARDFARM_DIRECTORY}/bft -x ci40_passed_tests -n ci40_dut \
+        -o ${WORKSPACE}/results -c ${params.BOARDFARM_DIRECTORY}/boardfarm_config.json -y"
+
+        junit 'results/test_results.xml'
     }
-//}
+}
