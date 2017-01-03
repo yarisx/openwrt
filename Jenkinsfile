@@ -34,15 +34,9 @@ properties([
             description: 'Config file to use', name: "CONFIG_FILE"),
         stringParam(defaultValue: '', description: 'Set version, if blank job number will be used.',
             name: 'VERSION'),
-        stringParam(defaultValue: '/var/www/html', description: 'Path to the webserver used for the OTA upgrade',
-            name: 'WEBSERVER_PATH'),
-        stringParam(defaultValue: '10.40.9.4', description: 'IP of the webserver used for the OTA upgrade',
-            name: 'WEBSERVER_IP'),
-        stringParam(defaultValue: '10.40.9.2', description: 'IP of the WAN board',
-            name: 'WAN_IP'),
-        stringParam(defaultValue: '/home/jenkins/boardfarm/boardfarm',
-            description: 'Path to the a local copy of Boardfarm repository',
-            name: 'BOARDFARM_DIRECTORY'),
+        stringParam(defaultValue: '',
+            description: 'Branch to use for Boardfarm',
+            name: 'OVERRIDE_BOARDFARM'),
     ] + feedParams)
 ])
 
@@ -196,12 +190,12 @@ node('boardfarm') {
         deleteDir()
 
         unarchive mapping: ['bin/pistachio/*.ubi': '.']
-        sh "cp bin/pistachio/*.ubi ${params.WEBSERVER_PATH}/image.ubi"
+        sh "cp bin/pistachio/*.ubi ${env.WEBSERVER_PATH}/image.ubi"
 
         sh "sshpass -p 'root' scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-        ${params.BOARDFARM_DIRECTORY}/ota_update.sh ${params.BOARDFARM_DIRECTORY}/ota_verify.sh root@${params.WAN_IP}:~/"
+        ${env.OTA_DIRECTORY}/ota_update.sh ${env.OTA_DIRECTORY}/ota_verify.sh root@${env.WAN_IP}:~/"
         sh "sshpass -p 'root' ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-        root@${params.WAN_IP} '/root/ota_update.sh http://${params.WEBSERVER_IP}/image.ubi 192.168.0.2'"
+        root@${env.WAN_IP} '/root/ota_update.sh http://${env.WEBSERVER_IP}/image.ubi 192.168.0.2'"
         sh 'sleep 180'
 
         sh 'echo "ifconfig eth0 up" > /dev/ttyUSB0'
@@ -221,12 +215,21 @@ node('boardfarm') {
         sh 'sleep 10'
 
         sh "sshpass -p 'root' ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-        root@${params.WAN_IP} \"/root/ota_verify.sh 192.168.0.2 && rm /root/ota_*\""
+        root@${env.WAN_IP} \"/root/ota_verify.sh 192.168.0.2 && rm /root/ota_*\""
 
         sh "mkdir -p '${WORKSPACE}/results'"
+        checkout([$class: "GitSCM",
+            branches: [[ name: params.OVERRIDE_BOARDFARM?.trim() ?: "master" ]],
+            extensions: [[ $class: "RelativeTargetDirectory",
+            relativeTargetDir: "${WORKSPACE}/boardfarm" ]],
+            userRemoteConfigs:
+            [[ refspec: '+refs/pull/*/head:refs/remotes/origin/PR-* \
+                +refs/heads/*:refs/remotes/origin/*',
+            url: "https://github.com/CreatorDev/boardfarm.git"]] ])
+
         sh "export USER='jenkins'; \
-        ${params.BOARDFARM_DIRECTORY}/bft -x ci40_passed_tests -n ci40_dut \
-        -o ${WORKSPACE}/results -c ${params.BOARDFARM_DIRECTORY}/boardfarm_config.json -y"
+        ${WORKSPACE}/boardfarm/bft -x ci40_passed_tests -n ci40_dut \
+        -o ${WORKSPACE}/results -c ${WORKSPACE}/boardfarm/boardfarm_config.json -y"
 
         junit 'results/test_results.xml'
     }
