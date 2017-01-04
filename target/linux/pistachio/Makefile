@@ -15,6 +15,8 @@ SUBTARGETS=marduk
 
 KERNEL_PATCHVER:=4.4
 
+CPU_TYPE:=mips32r2
+
 include $(INCLUDE_DIR)/target.mk
 
 define Target/Description
