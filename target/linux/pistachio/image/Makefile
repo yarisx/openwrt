@@ -8,7 +8,7 @@
 include $(TOPDIR)/rules.mk
 include $(INCLUDE_DIR)/image.mk
 
-KERNEL_LOADADDR := 0x84000000
+KERNEL_LOADADDR := 0x80400000
 
 define Build/dtb-bin
 	$(INSTALL_DIR) $(dir $(DTS_DIR)/$(DEVICE_DTS))
