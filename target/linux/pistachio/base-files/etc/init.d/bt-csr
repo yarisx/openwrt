@@ -1,0 +1,166 @@
+#!/bin/sh /etc/rc.common
+#
+# Copyright (C) 2016 OpenWrt.org
+#
+# This is free software, licensed under the GNU General Public License v2.
+# See /LICENSE for more information.
+#
+
+START=22
+STOP=22
+
+BT_RST_N_GPIO=43
+
+setup_csr_gpio() {
+	# Set up BT_RST_N MFIO access
+	# check if the gpio has already been exported
+	{
+	if [ ! -d "/sys/class/gpio/gpio$BT_RST_N_GPIO" ];then
+		echo $BT_RST_N_GPIO > /sys/class/gpio/export
+	fi
+	} > /dev/null 2>&1
+	echo out > /sys/class/gpio/gpio$BT_RST_N_GPIO/direction
+}
+
+hide_csr_gpio() {
+	# Remove BT_RST_N MFIO access
+	# check if the gpio has already been exported
+	{
+	if [ -d "/sys/class/gpio/gpio$BT_RST_N_GPIO" ];then
+		echo $BT_RST_N_GPIO > /sys/class/gpio/unexport
+	fi
+	} > /dev/null 2>&1
+}
+
+
+n_reset_csr() {
+	setup_csr_gpio
+	echo 1 > /sys/class/gpio/gpio$BT_RST_N_GPIO/value
+	hide_csr_gpio
+}
+
+reset_csr() {
+	setup_csr_gpio
+	echo 0 > /sys/class/gpio/gpio$BT_RST_N_GPIO/value
+	hide_csr_gpio
+}
+
+
+bringup_csr() {
+	. /lib/functions/mac.sh
+	MAC=$(get_bluetooth_mac)
+
+	HCI_PS_ID=$(ps | grep -v grep | grep hciattach | awk '{print $1}')
+	if [ -z $HCI_PS_ID ]
+	then
+		# Set up CSR PSKEYs
+		PSKEYS=/tmp/ci40.psr
+		echo "// PSKEY_BDADDR" > $PSKEYS
+		if [ ! -z "$MAC" ]
+		then
+			echo "&0001 = 00${MAC:9:2} ${MAC:12:2}${MAC:15:2} 00${MAC:6:2} ${MAC:0:2}${MAC:3:2}" >> $PSKEYS
+		fi
+		cat <<EOF >> $PSKEYS
+// PSKEY_ANA_FREQ
+// 26MHz reference clock
+&01fe = 6590
+
+// PSKEY_HOST_INTERFACE
+// BCSP host interface
+&01f9 = 0001
+
+// PSKEY_UART_CONFIG_BCSP
+&01bf = 0806
+
+// PSKEY_UART_BITRATE
+// 1000000 baudrate
+&01ea = 000F 4240
+
+//PSKEY_DEEP_SLEEP_STATE
+&0229 = 0000
+
+// PSKEY_CLOCK_REQUEST_ENABLE
+// Reset to 0x0000 for not using the PIO[2] and PIO[3] and disenabling TXCO
+&0246 = 0000
+
+// PSKEY_COEX_SCHEME
+// Unity-3
+//&2480 = 0003
+// PSKEY_COEX_PIO_UNITY_3_BT_ACTIVE
+//&2483 = 0004 0001
+// PSKEY_COEX_PIO_UNITY_3_BT_STATUS
+//&2484 = 0001 0001
+// PSKEY_COEX_PIO_UNITY_3_WLAN_DENY
+//&2485 = 0009 0001
+// PSKEY_coex_transaction_priority_table
+//&2488 = 0001 0001 0001 0001 0001 0001 0001 0001 0001 0001 0001 0000 0001 0000 0000 0000 0001
+
+// Timing Configuration
+// --------------------
+// PSKEY_COEX_UNITY_3_TIMINGS
+// T1 signal timing = 150, T2 signal timing = 17
+//&2489 = 0150 0017
+
+// PSKEY_BT_POWER_TABLE_V0
+&241a = 2718 0050 2c28 0050 ec00 2918 0040 2e28 0040 f000 2818 0030 2c28 0030 f400 2818 0020 2c28 0020 f800 2918 0010 2d28 0010 fc00 2d1a 0000 302a 0000 0000 393a 0000 3c6c 0000 0400
+
+// PSKEY_BT_TX_MIXER_CTRIM_OFFSET
+&2175 = 0000 0000 0000 ffff ffff
+
+// PSKEY_LC_MAX_TX_POWER
+&0017 = 0004
+
+// PSKEY_LC_DEFAULT_TX_POWER
+&0021 = 0004
+
+// PSKEY_LC_MAX_TX_POWER_NO_RSSI
+&002d = 0004
+
+// PSKEY_BLE_DEFAULT_TX_POWER
+&22c8 = 0004
+
+EOF
+
+		# Bring up CSR HCI
+		DEVICE=/dev/ttyS0
+		BAUD_RATE=115200
+		BAUD_RATE_LATER=1000000
+		echo -e "Initializing device $DEVICE"
+		bccmd -t bcsp -d $DEVICE -b $BAUD_RATE buildname &&\
+		bccmd -t bcsp -d $DEVICE -b $BAUD_RATE psload -r $PSKEYS &&\
+		(hciattach -s $BAUD_RATE $DEVICE bcsp $BAUD_RATE_LATER noflow)
+		{
+			if [ $? == 0 ]; then
+				echo "Initialization Pass"
+			else
+				echo "Initialization Fail"
+				exit 1
+			fi
+		}
+
+	fi
+
+# Configure HCI and get some version info
+	BT_ADDR_MASK=10
+	hciconfig hci0 reset &&\
+	hciconfig hci0 up &&\
+	hciconfig hci0 piscan &&\
+	hciconfig hci0 version &&\
+	BT_ADDR=$(echo $MAC | cut -c $BT_ADDR_MASK-) &&\
+	BT_NAME="Creator-Ci40["$BT_ADDR"]" &&\
+	hciconfig hci0 name $BT_NAME &&\
+	hcitool dev || (echo  "Failed to configure" && exit 1)
+
+}
+
+start() {
+	echo  "Starting Bluetooth..."
+	reset_csr && sleep 1 && n_reset_csr && bringup_csr& 
+}
+
+stop() {
+	echo  "Stopping Bluetooth "
+	killall -q bluetoothd hciattach
+	reset_csr
+}
+
