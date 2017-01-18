@@ -18,7 +18,6 @@ define KernelPackage/serial-sc16is7xx
   FILES:= $(LINUX_DIR)/drivers/tty/serial/sc16is7xx.ko
   AUTOLOAD:= $(call AutoProbe, sc16is7xx)
   DEPENDS:=@TARGET_pistachio_marduk
-  $(call AddDepends/serial)
 endef
 
 $(eval $(call KernelPackage,serial-sc16is7xx))
