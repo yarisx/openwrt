@@ -17,7 +17,7 @@ define KernelPackage/serial-sc16is7xx
     CONFIG_SERIAL_SC16IS7XX_I2C=n
   FILES:= $(LINUX_DIR)/drivers/tty/serial/sc16is7xx.ko
   AUTOLOAD:= $(call AutoProbe, sc16is7xx)
-  DEPENDS:=@TARGET_pistachio_marduk
+  DEPENDS:=@TARGET_pistachio
 endef
 
 $(eval $(call KernelPackage,serial-sc16is7xx))
@@ -50,7 +50,7 @@ define KernelPackage/sound-pistachio-soc
     $(LINUX_DIR)/sound/soc/img/pistachio-internal-dac.ko \
     $(LINUX_DIR)/sound/soc/img/pistachio.ko
   AUTOLOAD:=$(call AutoProbe,img-i2s-in img-i2s-out img-parallel-out img-spdif-in img-spdif-out pistachio-event-timer-module pistachio-internal-dac snd-soc-tpa6130a2 pistachio)
-  DEPENDS:=@TARGET_pistachio_marduk +kmod-sound-soc-core +kmod-serial-sc16is7xx
+  DEPENDS:=@TARGET_pistachio +kmod-sound-soc-core +kmod-serial-sc16is7xx
   $(call AddDepends/sound)
 endef
 
@@ -60,7 +60,7 @@ $(eval $(call KernelPackage,sound-pistachio-soc))
 define KernelPackage/marduk-cc2520
   SUBMENU:=$(WPAN_MENU)
   TITLE:=CC2520 transceiver driver for Marduk Board
-  DEPENDS:=@TARGET_pistachio_marduk +kmod-mac802154 +kmod-ieee802154_6lowpan \
+  DEPENDS:=@TARGET_pistachio_marduk_legacy +kmod-mac802154 +kmod-ieee802154_6lowpan \
     +kmod-nhc_udp +kmod-nhc_fragment +kmod-nhc_dest +kmod-nhc_hop \
     +kmod-nhc_mobility +kmod-nhc_routing +kmod-nhc_ipv6
   KCONFIG:=CONFIG_IEEE802154_CC2520 \
