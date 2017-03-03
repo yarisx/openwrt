@@ -163,19 +163,18 @@ node('docker && imgtec') {  // Only run on internal slaves as build takes a lot 
                 [$class: 'FileBinding', credentialsId: 'opkg-build-private-key', variable: 'PRIVATE_KEY'],
                 [$class: 'FileBinding', credentialsId: 'opkg-build-public-key', variable: 'PUBLIC_KEY'],
             ]){
-                // Attempt to build quickly and reliably
                 try {
                     sh "cp ${env.PRIVATE_KEY} ${WORKSPACE}/key-build"
                     sh "cp ${env.PUBLIC_KEY} ${WORKSPACE}/key-build.pub"
-                    sh "make -j4 V=s ${params.ALL_PACKAGES ? 'IGNORE_ERRORS=m' : ''}"
-                } catch (hudson.AbortException err) {
-                    // TODO BUG JENKINS-28822
-                    if(err.getMessage().contains('script returned exit code 143')) {
-                        throw err
+
+                    if(params.ALL_PACKAGES) {
+                        sh "make -j1 V=s IGNORE_ERRORS=m"
                     }
-                    echo 'Parallel build failed, attempting to continue in  single threaded mode'
-                    sh "make -j1 V=s ${params.ALL_PACKAGES ? 'IGNORE_ERRORS=m' : ''}"
-                } finally {
+                    else {
+                        sh "make -j4 V=s || make -j1 V=s"
+                    }
+                }
+                finally {
                     sh "rm ${WORKSPACE}/key-build*"
                 }
             }
