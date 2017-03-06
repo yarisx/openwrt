@@ -120,7 +120,7 @@ node('docker && imgtec') {  // Only run on internal slaves as build takes a lot 
              + 'CONFIG_PACKAGE_kmod-usb-net-kaweth=y\n' \
              + 'CONFIG_PACKAGE_kmod-usb-net-mcs7830=y\n' \
              + 'CONFIG_PACKAGE_kmod-usb-net-pegasus=y\n' \
-             + 'CONFIG_PACKAGE_kmod-usb-net-qmi-wwa=y\n' \
+             + 'CONFIG_PACKAGE_kmod-usb-net-qmi-wwan=y\n' \
              + 'CONFIG_PACKAGE_kmod-usb-net-rndis=y\n' \
              + 'CONFIG_PACKAGE_kmod-usb-net-rtl8150=y\n' \
              + 'CONFIG_PACKAGE_kmod-usb-net-rtl8152=y\n' \
