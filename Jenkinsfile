@@ -120,7 +120,7 @@ node('docker && imgtec') {  // Only run on internal slaves as build takes a lot 
              + 'CONFIG_PACKAGE_kmod-usb-net-kaweth=y\n' \
              + 'CONFIG_PACKAGE_kmod-usb-net-mcs7830=y\n' \
              + 'CONFIG_PACKAGE_kmod-usb-net-pegasus=y\n' \
-             + 'CONFIG_PACKAGE_kmod-usb-net-qmi-wwa=y\n' \
+             + 'CONFIG_PACKAGE_kmod-usb-net-qmi-wwan=y\n' \
              + 'CONFIG_PACKAGE_kmod-usb-net-rndis=y\n' \
              + 'CONFIG_PACKAGE_kmod-usb-net-rtl8150=y\n' \
              + 'CONFIG_PACKAGE_kmod-usb-net-rtl8152=y\n' \
@@ -163,19 +163,18 @@ node('docker && imgtec') {  // Only run on internal slaves as build takes a lot 
                 [$class: 'FileBinding', credentialsId: 'opkg-build-private-key', variable: 'PRIVATE_KEY'],
                 [$class: 'FileBinding', credentialsId: 'opkg-build-public-key', variable: 'PUBLIC_KEY'],
             ]){
-                // Attempt to build quickly and reliably
                 try {
                     sh "cp ${env.PRIVATE_KEY} ${WORKSPACE}/key-build"
                     sh "cp ${env.PUBLIC_KEY} ${WORKSPACE}/key-build.pub"
-                    sh "make -j4 V=s ${params.ALL_PACKAGES ? 'IGNORE_ERRORS=m' : ''}"
-                } catch (hudson.AbortException err) {
-                    // TODO BUG JENKINS-28822
-                    if(err.getMessage().contains('script returned exit code 143')) {
-                        throw err
+
+                    if(params.ALL_PACKAGES) {
+                        sh "make -j1 V=s IGNORE_ERRORS=m"
                     }
-                    echo 'Parallel build failed, attempting to continue in  single threaded mode'
-                    sh "make -j1 V=s ${params.ALL_PACKAGES ? 'IGNORE_ERRORS=m' : ''}"
-                } finally {
+                    else {
+                        sh "make -j4 V=s || make -j1 V=s"
+                    }
+                }
+                finally {
                     sh "rm ${WORKSPACE}/key-build*"
                 }
             }
@@ -188,54 +187,12 @@ node('docker && imgtec') {  // Only run on internal slaves as build takes a lot 
             }
             deleteDir()  // clean up the workspace to save space
         }
-    }
-}
-node('boardfarm') {
-    stage('Integration test') {
-        deleteDir()
 
-        unarchive mapping: ['bin/pistachio/*.ubi': '.']
-        sh "cp bin/pistachio/*.ubi ${env.WEBSERVER_PATH}/image.ubi"
-
-        sh "sshpass -p 'root' scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-        ${env.OTA_DIRECTORY}/ota_update.sh ${env.OTA_DIRECTORY}/ota_verify.sh root@${env.WAN_IP}:~/"
-        sh "sshpass -p 'root' ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-        root@${env.WAN_IP} '/root/ota_update.sh http://${env.WEBSERVER_IP}/image.ubi 192.168.0.2'"
-        sh 'sleep 180'
-
-        sh 'echo "ifconfig eth0 up" > /dev/ttyUSB0'
-        sh 'echo "ifconfig eth1 up" > /dev/ttyUSB0'
-        sh 'sleep 10'
-        sh 'echo "ifconfig eth0 192.168.1.1" > /dev/ttyUSB0'
-        sh 'echo "ifconfig eth1 192.168.0.2" > /dev/ttyUSB0'
-
-        sh 'echo "iptables -A forwarding_rule -i eth0 -j ACCEPT" > /dev/ttyUSB0'
-        sh 'echo "iptables -A forwarding_rule -i eth1 -j ACCEPT" > /dev/ttyUSB0'
-        sh 'echo "iptables -A forwarding_rule -o eth0 -j ACCEPT" > /dev/ttyUSB0'
-        sh 'echo "iptables -A forwarding_rule -o eth1 -j ACCEPT" > /dev/ttyUSB0'
-
-        sh 'echo "route add default gw 192.168.0.1" > /dev/ttyUSB0'
-        sh 'sleep 10'
-        sh 'echo "sed -i \'$ a nameserver 8.8.4.4\' /etc/resolv.conf" > /dev/ttyUSB0'
-        sh 'sleep 10'
-
-        sh "sshpass -p 'root' ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-        root@${env.WAN_IP} \"/root/ota_verify.sh 192.168.0.2 && rm /root/ota_*\""
-
-        sh "mkdir -p '${WORKSPACE}/results'"
-        checkout([$class: "GitSCM",
-            branches: [[ name: params.OVERRIDE_BOARDFARM?.trim() ?: "master" ]],
-            extensions: [[ $class: "RelativeTargetDirectory",
-            relativeTargetDir: "${WORKSPACE}/boardfarm" ]],
-            userRemoteConfigs:
-            [[ refspec: '+refs/pull/*/head:refs/remotes/origin/PR-* \
-                +refs/heads/*:refs/remotes/origin/*',
-            url: "https://github.com/CreatorDev/boardfarm.git"]] ])
-
-        sh "export USER='jenkins'; \
-        ${WORKSPACE}/boardfarm/bft -x ci40_passed_tests -n ci40_dut \
-        -o ${WORKSPACE}/results -c ${WORKSPACE}/boardfarm/boardfarm_config.json -y"
-
-        junit 'results/test_results.xml'
+        stage('Integration test') {
+            build job: "../boardfarm/master", parameters: [
+                booleanParam(name: 'OVERRIDE_PACKAGES', value: params.ALL_PACKAGES),
+                string(name: 'IMAGE_PATH', value: BUILD_URL)
+            ]
+        }
     }
 }
