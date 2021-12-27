@@ -7,7 +7,8 @@
 +CC = gcc
 +LIB = liblzma.a
  RM = rm -f
- CFLAGS = -c -O2 -Wall
+-CFLAGS = -c -O2 -Wall
++CFLAGS = -c -O2 -Wall -fPIC
 +AR = ar
 +RANLIB = ranlib
  
