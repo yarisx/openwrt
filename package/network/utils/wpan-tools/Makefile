@@ -10,9 +10,14 @@ include $(TOPDIR)/rules.mk
 PKG_NAME:=wpan-tools
 PKG_VERSION:=0.6
 
+PKG_SOURCE_PROTO:=git
+# Commit ID corresponds to 0.6 tag, the latest (as of 2021-12-27) is 0.9
+PKG_SOURCE_VERSION:=d9dc9737aff2f54e75ec58ec300f9718dda61f57
+PKG_SOURCE_URL:=https://github.com/yarisx/wpan-tools.git
+PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_SOURCE_VERSION)
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.bz2
-PKG_SOURCE_URL:=http://wpan.cakelab.org/releases/
-PKG_MD5SUM:=dd5367fe36ad8269263a29edad073bf7
+
+PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(PKG_VERSION)
 
 include $(INCLUDE_DIR)/package.mk
 
@@ -25,7 +30,9 @@ define Package/wpan-tools
 endef
 
 define Build/Configure
-  $(call Build/Configure/Default)
+	cd $(PKG_BUILD_DIR) && $(CONFIGURE_VARS) ./autogen.sh
+
+	$(call Build/Configure/Default)
 endef
 
 define Package/wpan-tools/install
