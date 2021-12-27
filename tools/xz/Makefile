@@ -21,6 +21,7 @@ include $(INCLUDE_DIR)/host-build.mk
 HOST_CONFIGURE_ARGS += \
 	--enable-static=yes \
 	--enable-shared=no \
+        CFLAGS="-fPIC"
 
 define Host/Install
 	+$(MAKE) $(HOST_JOBS) -C $(HOST_BUILD_DIR) install xzlinks="unxz xzcat"
